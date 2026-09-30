@@ -8,3 +8,6 @@ image-search/
 .DS_Store
 Thumbs.db
 *.swp
+
+# Arena harness artifacts
+*.patch
