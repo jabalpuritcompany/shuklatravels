@@ -3,15 +3,35 @@
  * Dancewala Studio — logo processing pipeline
  * ------------------------------------------------------------------
  *   node tools/process-logo.mjs <logo-file> [mark-file]
+ *   node tools/process-logo.mjs --official <logo-file> [mark-file]
  *
- * Reads the official logo, keeps its exact proportions, writes every
- * derivative the site needs, and prints the dominant colours so the CSS
- * palette can be matched to the brand.
+ * Reads the official logo, keeps its exact proportions and colours, writes
+ * every derivative the site needs, and prints the dominant colours so the
+ * CSS palette can be matched to the brand.
  *
  * Run with no arguments to regenerate the derivatives from the current
  * placeholder artwork (useful for testing the pipeline).
  *
- * Outputs (always the same filenames, so nothing else has to change):
+ * --official
+ *   Writes the artwork to a NEW, unique filename and repoints every
+ *   reference in the codebase to it. This guarantees no browser, CDN or
+ *   service-worker cache can keep serving the old placeholder:
+ *
+ *     dancewala-studio-logo.png       -> dancewala-studio-official-logo.png
+ *     dancewala-studio-logo-mark.png  -> dancewala-studio-official-logo-mark.png
+ *     favicon.png                     -> favicon-official.png
+ *     apple-touch-icon.png            -> apple-touch-icon-official.png
+ *     favicon.ico                       (root; standard name kept, overwritten)
+ *
+ *   Files rewritten automatically:
+ *     tools/site/config.js            desktop + mobile logo paths
+ *     tools/site/layout.js            favicon + apple-touch-icon <link> tags
+ *     tools/build.mjs                 webmanifest icons
+ *     email-templates/*.html          email header logo (absolute URL)
+ *
+ *   Then: node tools/build.mjs
+ *
+ * Outputs (without --official, filenames stay stable):
  *   assets/images/logo/dancewala-studio-logo.png        desktop wordmark
  *   assets/images/logo/dancewala-studio-logo-mark.png   compact mark (mobile)
  *   assets/images/logo/favicon.png                      64px
@@ -21,7 +41,7 @@
  * Requires: npm i sharp   (dev-only, never shipped)
  */
 
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
@@ -30,7 +50,17 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const LOGO_DIR = join(ROOT, 'assets/images/logo');
 mkdirSync(LOGO_DIR, { recursive: true });
 
-const [, , argLogo, argMark] = process.argv;
+const argv = process.argv.slice(2);
+const OFFICIAL = argv.includes('--official');
+const positional = argv.filter((a) => !a.startsWith('--'));
+const argLogo = positional[0] || null;
+const argMark = positional[1] || null;
+
+if (OFFICIAL && !argLogo) {
+  console.error('--official requires the official logo file as the first argument.');
+  console.error('  e.g. node tools/process-logo.mjs --official ~/uploads/logo.png');
+  process.exit(1);
+}
 
 /** Fall back to the placeholder artwork when no file is supplied. */
 const PLACEHOLDER_WORDMARK = join(LOGO_DIR, '_placeholder-wordmark.svg');
@@ -38,6 +68,21 @@ const PLACEHOLDER_MARK = join(LOGO_DIR, '_placeholder-mark.svg');
 
 const logoPath = argLogo ? resolve(process.cwd(), argLogo) : PLACEHOLDER_WORDMARK;
 const markPath = argMark ? resolve(process.cwd(), argMark) : null;
+
+/* ------------------------------------------------------------------ *
+ * Output filenames — --official switches to unique, cache-busting names
+ * ------------------------------------------------------------------ */
+const SUFFIX = OFFICIAL ? '-official' : '';
+
+const NAME_WORDMARK = `dancewala-studio${SUFFIX}-logo.png`;
+const NAME_MARK = `dancewala-studio${SUFFIX}-logo-mark.png`;
+const NAME_FAVICON = `favicon${SUFFIX}.png`;
+const NAME_APPLE = `apple-touch-icon${SUFFIX}.png`;
+
+const REL_WORDMARK = `/assets/images/logo/${NAME_WORDMARK}`;
+const REL_MARK = `/assets/images/logo/${NAME_MARK}`;
+const REL_FAVICON = `/assets/images/logo/${NAME_FAVICON}`;
+const REL_APPLE = `/assets/images/logo/${NAME_APPLE}`;
 
 async function pickSource(explicit, fallback) {
   if (explicit) {
@@ -138,15 +183,78 @@ async function icoFromPng(pngBuffer, size) {
   return Buffer.concat([header, entry, pngBuffer]);
 }
 
+/* ------------------------------------------------------------------ *
+ * Reference rewrite (only for --official)
+ * ------------------------------------------------------------------ */
+const REFERENCE_TARGETS = [
+  'tools/site/config.js',
+  'tools/site/layout.js',
+  'tools/build.mjs',
+  'email-templates/customer-booking-confirmation.html',
+  'email-templates/admin-new-booking.html',
+];
+
+function patchReferences() {
+  // Longest / most specific first so "-logo-mark" is never eaten by "-logo".
+  const swaps = [
+    ['/assets/images/logo/dancewala-studio-logo-mark.png', REL_MARK],
+    ['/assets/images/logo/dancewala-studio-logo.png', REL_WORDMARK],
+    ['/assets/images/logo/apple-touch-icon.png', REL_APPLE],
+    ['/assets/images/logo/favicon.png', REL_FAVICON],
+  ];
+  // Absolute (production) URLs used by email templates + JSON-LD.
+  const SITE_ORIGIN = 'https://dancewalas.com';
+  const absSwaps = swaps.map(([from, to]) => [`${SITE_ORIGIN}${from}`, `${SITE_ORIGIN}${to}`]);
+  const all = [...swaps, ...absSwaps].filter(([from, to]) => from !== to);
+
+  const changed = [];
+  for (const rel of REFERENCE_TARGETS) {
+    const file = join(ROOT, rel);
+    if (!existsSync(file)) continue;
+    const before = readFileSync(file, 'utf8');
+    let after = before;
+    for (const [from, to] of all) after = after.split(from).join(to);
+    if (after !== before) {
+      writeFileSync(file, after, 'utf8');
+      changed.push(rel);
+    }
+  }
+  return changed;
+}
+
+function removeStaleFiles() {
+  const stale = [
+    'dancewala-studio-logo.png',
+    'dancewala-studio-logo-mark.png',
+    'favicon.png',
+    'apple-touch-icon.png',
+  ].filter((f) => ![NAME_WORDMARK, NAME_MARK, NAME_FAVICON, NAME_APPLE].includes(f));
+
+  const removed = [];
+  for (const f of stale) {
+    const p = join(LOGO_DIR, f);
+    if (existsSync(p)) {
+      unlinkSync(p);
+      removed.push(f);
+    }
+  }
+  return removed;
+}
+
+/* ------------------------------------------------------------------ *
+ * Main
+ * ------------------------------------------------------------------ */
 async function main() {
   const wordmark = await pickSource(argLogo ? logoPath : null, PLACEHOLDER_WORDMARK);
   const mark = markPath ? await pickSource(markPath, null) : null;
 
+  console.log(OFFICIAL ? 'Mode            : OFFICIAL (unique filenames, cache-busted)' : 'Mode            : standard');
   console.log('Wordmark source :', wordmark.replace(ROOT + '/', ''));
   if (mark) console.log('Mark source     :', mark.replace(ROOT + '/', ''));
 
   const wm = await sharp(wordmark).metadata();
   console.log(`Wordmark size   : ${wm.width} x ${wm.height}  (ratio ${(wm.width / wm.height).toFixed(2)})`);
+  console.log('');
 
   /* Desktop wordmark — height 96 for crisp 2x rendering */
   const wmHeight = 96;
@@ -154,29 +262,43 @@ async function main() {
   await sharp(wordmark)
     .resize({ width: wmWidth, height: wmHeight, fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .png({ compressionLevel: 9, palette: false })
-    .toFile(join(LOGO_DIR, 'dancewala-studio-logo.png'));
-  console.log(`  -> dancewala-studio-logo.png  ${wmWidth} x ${wmHeight}`);
+    .toFile(join(LOGO_DIR, NAME_WORDMARK));
+  console.log(`  -> ${NAME_WORDMARK}  ${wmWidth} x ${wmHeight}`);
 
   /* Compact mark — square, from the mark file or the wordmark */
   const markSrc = mark || wordmark;
   await sharp(markSrc)
     .resize({ width: 128, height: 128, fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .png({ compressionLevel: 9 })
-    .toFile(join(LOGO_DIR, 'dancewala-studio-logo-mark.png'));
-  console.log('  -> dancewala-studio-logo-mark.png  128 x 128');
+    .toFile(join(LOGO_DIR, NAME_MARK));
+  console.log(`  -> ${NAME_MARK}  128 x 128`);
 
   /* Favicon 64 + apple touch 180 */
   const fav = await sharp(markSrc)
     .resize({ width: 64, height: 64, fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .png({ compressionLevel: 9 })
     .toBuffer();
-  await sharp(fav).toFile(join(LOGO_DIR, 'favicon.png'));
+  await sharp(fav).toFile(join(LOGO_DIR, NAME_FAVICON));
   await sharp(markSrc)
     .resize({ width: 180, height: 180, fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .png({ compressionLevel: 9 })
-    .toFile(join(LOGO_DIR, 'apple-touch-icon.png'));
+    .toFile(join(LOGO_DIR, NAME_APPLE));
   await (await import('node:fs/promises')).writeFile(join(ROOT, 'favicon.ico'), await icoFromPng(fav, 64));
-  console.log('  -> favicon.png 64 x 64 · apple-touch-icon.png 180 x 180 · favicon.ico');
+  console.log(`  -> ${NAME_FAVICON} 64 x 64 · ${NAME_APPLE} 180 x 180 · favicon.ico`);
+
+  if (OFFICIAL) {
+    console.log('');
+    const changed = patchReferences();
+    console.log('References repointed:');
+    if (changed.length === 0) console.log('  (already up to date)');
+    changed.forEach((f) => console.log(`  ~ ${f}`));
+
+    const removed = removeStaleFiles();
+    if (removed.length) {
+      console.log('Stale files removed:');
+      removed.forEach((f) => console.log(`  - assets/images/logo/${f}`));
+    }
+  }
 
   /* Palette */
   const { ranked, hasAlpha } = await analysePalette(wordmark);
