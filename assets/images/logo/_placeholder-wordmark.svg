@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 116" role="img" aria-label="Dancewala Studio">
+  <title>Dancewala Studio — placeholder wordmark</title>
+  <defs>
+    <linearGradient id="dw-swoosh" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFC24B"/>
+      <stop offset="0.55" stop-color="#FF2E7E"/>
+      <stop offset="1" stop-color="#6C2BD9"/>
+    </linearGradient>
+  </defs>
+  <!-- motion swoosh -->
+  <path d="M8 92 C 70 60, 120 108, 190 74 S 320 40, 412 66" fill="none" stroke="url(#dw-swoosh)" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="404" cy="68" r="7" fill="#FF2E7E"/>
+  <!-- wordmark -->
+  <text x="8" y="52" font-family="Inter, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="46" font-weight="800" letter-spacing="-1.2" fill="#FFFFFF">DANCEWALA</text>
+  <text x="12" y="82" font-family="Inter, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="8.5" fill="#FFC24B">STUDIO</text>
+</svg>

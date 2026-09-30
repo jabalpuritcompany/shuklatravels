@@ -1,0 +1,10 @@
+# Dev dependencies — never shipped to production
+node_modules/
+
+# Scratch folder from web image searches (not licensed for the site)
+image-search/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp

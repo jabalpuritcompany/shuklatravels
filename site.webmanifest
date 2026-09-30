@@ -1,0 +1,23 @@
+{
+  "name": "Dancewala Studio — Dance Classes in Gurugram",
+  "short_name": "Dancewala Studio",
+  "description": "Dancewala Studio is a dance studio in Sector 46, Gurugram. Book dance classes for kids and adults, wedding and sangeet choreography, workshops and performances online.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0B0713",
+  "theme_color": "#0B0713",
+  "lang": "en-IN",
+  "icons": [
+    {
+      "src": "/assets/images/logo/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/images/logo/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

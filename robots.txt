@@ -1,0 +1,12 @@
+# Dancewala Studio — robots.txt
+# Allow all public pages; no admin, no query-parameter URLs exist yet.
+
+User-agent: *
+Allow: /
+
+# Nothing worth crawling is disallowed. Kept explicit for clarity.
+Disallow: /tools/
+Disallow: /node_modules/
+Disallow: /assets/images/_src/
+
+Sitemap: https://dancewalas.com/sitemap.xml

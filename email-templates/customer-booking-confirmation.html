@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<!--
+  ===========================================================================
+  Dancewala Studio — CUSTOMER BOOKING CONFIRMATION EMAIL
+  ---------------------------------------------------------------------------
+  Static preview template. This file is NOT sent by the frontend.
+
+  ── FUTURE BACKEND INTEGRATION ────────────────────────────────────────────
+  Server sends this after payment verification succeeds:
+
+    1. Gateway callback arrives at the server
+    2. SERVER verifies the payment signature with the gateway API + secret key
+    3. Booking status is set to "confirmed" and payment to "paid"
+    4. Server renders this template with real data and sends it
+    5. Admin notification (admin-new-booking.html) is sent in the same step
+
+  Replace every {{ placeholder }} with real values from the database.
+  Trigger order matters: never send this before step 2 completes.
+  ===========================================================================
+-->
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Booking Confirmation — Dancewala Studio</title>
+<style>
+  body { margin:0; background:#FFF8F4; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color:#1A1226; }
+  .wrap { max-width:600px; margin:0 auto; padding:24px; }
+  .card { background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 12px 30px -12px rgba(11,7,19,.18); }
+  .head { background:#0B0713; color:#fff; padding:28px 28px 24px; }
+  .head h1 { margin:0 0 6px; font-size:22px; letter-spacing:-.02em; }
+  .head p { margin:0; color:#B9AEC9; font-size:14px; }
+  .accent { height:3px; background:linear-gradient(90deg,#FFC24B,#FF2E7E,#6C2BD9); }
+  .body { padding:26px 28px; }
+  .body p { margin:0 0 14px; line-height:1.65; font-size:15px; }
+  .rows { margin:20px 0; border:1px solid rgba(26,18,38,.1); border-radius:14px; overflow:hidden; }
+  .row { display:flex; justify-content:space-between; gap:16px; padding:11px 16px; border-bottom:1px solid rgba(26,18,38,.08); font-size:14px; }
+  .row:last-child { border-bottom:0; }
+  .row dt { margin:0; color:#645A75; }
+  .row dd { margin:0; font-weight:700; text-align:right; word-break:break-word; }
+  .row.total { background:#FFF8F4; }
+  .btn { display:inline-block; padding:13px 26px; border-radius:999px; background:#FF2E7E; color:#fff !important; font-weight:700; text-decoration:none; font-size:15px; }
+  .foot { padding:20px 28px 26px; color:#645A75; font-size:13px; line-height:1.6; border-top:1px solid rgba(26,18,38,.08); }
+  .foot a { color:#C8105C; }
+  code { background:#FFF8F4; padding:2px 6px; border-radius:5px; font-size:13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="head">
+      <h1>Booking Confirmed</h1>
+      <p>Dancewala Studio · Sector 46, Gurugram</p>
+    </div>
+    <div class="accent"></div>
+
+    <div class="body">
+      <p>Hi <strong>{{customer_name}}</strong>,</p>
+      <p>Your booking with Dancewala Studio is confirmed. We have your details and the studio will contact you if anything needs adjusting before your session.</p>
+
+      <div class="rows">
+        <div class="row"><dt>Booking ID</dt><dd>{{booking_id}}</dd></div>
+        <div class="row"><dt>Service</dt><dd>{{service_name}}</dd></div>
+        <div class="row"><dt>Date</dt><dd>{{booking_date}}</dd></div>
+        <div class="row"><dt>Time</dt><dd>{{booking_time}}</dd></div>
+        <div class="row"><dt>Participants</dt><dd>{{participants}}</dd></div>
+        <div class="row"><dt>Venue</dt><dd>{{venue}}</dd></div>
+        <div class="row"><dt>Payment Status</dt><dd>{{payment_status}}</dd></div>
+        <div class="row total"><dt>Amount Paid</dt><dd>{{amount_paid}}</dd></div>
+      </div>
+
+      <p style="text-align:center;margin:26px 0"><a class="btn" href="{{booking_details_url}}">View Booking</a></p>
+
+      <p><strong>Finding the studio</strong><br>
+      Building 19, Second Floor, Huda Market, Sector 46, Gurugram, Haryana 122003. If you cannot find the entrance, call us and someone will come down.</p>
+
+      <p>Questions about this booking? Reply to this email, call <a href="tel:+919818501007">+91 9818501007</a>, or message us on WhatsApp at 8796911005.</p>
+    </div>
+
+    <div class="foot">
+      <p><strong>Dancewala Studio</strong><br>
+      Building 19, Second Floor, Huda Market, Sector 46, Gurugram, Haryana 122003, India<br>
+      <a href="tel:+919818501007">+91 9818501007</a> · <a href="mailto:dancewalas@gmail.com">dancewalas@gmail.com</a></p>
+      <p>This email was sent because a booking was made with this address. Cancellations and rescheduling are covered by our <a href="https://dancewalas.com/refund-cancellation-policy/">Refund &amp; Cancellation Policy</a>.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>
